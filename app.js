@@ -26,19 +26,19 @@ function createCacheDirectory(cachePath) {
   try {
     if (!fs.existsSync(cachePath)) {
       fs.mkdirSync(cachePath, { recursive: true });
-      console.log(` Створено директорію кешу: ${cachePath}`);
+      console.log(`Створено директорію кешу: ${cachePath}`);
     } else {
-      console.log(` Директорія кешу вже існує: ${cachePath}`);
+      console.log(`Директорія кешу вже існує: ${cachePath}`);
     }
     
     // Створюємо піддиректорію для фото
     const photosDir = path.join(cachePath, 'photos');
     if (!fs.existsSync(photosDir)) {
       fs.mkdirSync(photosDir, { recursive: true });
-      console.log(` Створено директорію для фото: ${photosDir}`);
+      console.log(`Створено директорію для фото: ${photosDir}`);
     }
   } catch (error) {
-    console.error(` Помилка при створенні директорії кешу: ${error.message}`);
+    console.error(`Помилка при створенні директорії кешу: ${error.message}`);
     process.exit(1);
   }
 }
@@ -105,12 +105,12 @@ function sendPhotoResponse(res, photoPath) {
 }
 
 // Створюємо HTTP сервер
-const server = http.createServer(async (req, res) => {
+const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
   const method = req.method;
 
-  console.log(` ${method} ${pathname}`);
+  console.log(`${method} ${pathname}`);
 
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -129,13 +129,13 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/RegisterForm.html' && method === 'GET') {
       const html = `
         <!DOCTYPE html>
-        <html>
+        <html lang="uk">
         <head>
             <title>Реєстрація пристрою</title>
             <meta charset="utf-8">
         </head>
         <body>
-            <h1> Реєстрація нового пристрою</h1>
+            <h1>Реєстрація нового пристрою</h1>
             <form action="/register" method="post" enctype="multipart/form-data">
                 <div>
                     <label>Назва пристрою*:</label><br>
@@ -163,13 +163,13 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/SearchForm.html' && method === 'GET') {
       const html = `
         <!DOCTYPE html>
-        <html>
+        <html lang="uk">
         <head>
             <title>Пошук пристрою</title>
             <meta charset="utf-8">
         </head>
         <body>
-            <h1> Пошук пристрою</h1>
+            <h1>Пошук пристрою</h1>
             <form action="/search" method="post">
                 <div>
                     <label>ID пристрою:</label><br>
@@ -191,93 +191,260 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // Для інших маршрутів повертаємо 405 якщо метод не підтримується
-    const supportedMethods = {
-      '/register': ['POST'],
-      '/inventory': ['GET'],
-      '/search': ['POST']
-    };
-
-    if (supportedMethods[pathname] && !supportedMethods[pathname].includes(method)) {
-      res.writeHead(405);
-      res.end('Method Not Allowed');
-      return;
-    }
-
     // Обробка тіла запиту
     let body = '';
     req.on('data', chunk => {
       body += chunk.toString();
     });
 
-    req.on('end', async () => {
-  try {
-    // Маршрут 1: Реєстрація нового пристрою
-    if (pathname === '/register' && method === 'POST') {
-      const contentType = req.headers['content-type'];
-      
-      if (!contentType || !contentType.includes('multipart/form-data')) {
-        res.writeHead(400);
-        res.end('Content-Type must be multipart/form-data');
-        return;
-      }
+    req.on('end', () => {
+      try {
+        // Маршрут 1: Реєстрація нового пристрою
+        if (pathname === '/register' && method === 'POST') {
+          const contentType = req.headers['content-type'];
+          
+          if (!contentType || !contentType.includes('multipart/form-data')) {
+            res.writeHead(400);
+            res.end('Content-Type must be multipart/form-data');
+            return;
+          }
 
-      const formData = parseMultipartFormData(body, contentType);
-      
-      // Перевірка обов'язкового поля
-      if (!formData.inventory_name) {
-        res.writeHead(400);
-        res.end('Inventory name is required');
-        return;
-      }
+          const formData = parseMultipartFormData(body, contentType);
+          
+          // Перевірка обов'язкового поля
+          if (!formData.inventory_name) {
+            res.writeHead(400);
+            res.end('Inventory name is required');
+            return;
+          }
 
-      // Створюємо новий запис
-      const newItem = {
-        id: nextId++,
-        inventory_name: formData.inventory_name,
-        description: formData.description || '',
-        photo_filename: null,
-        created_at: new Date().toISOString()
-      };
+          // Створюємо новий запис
+          const newItem = {
+            id: nextId++,
+            inventory_name: formData.inventory_name,
+            description: formData.description || '',
+            photo_filename: null,
+            created_at: new Date().toISOString()
+          };
 
-      // Зберігаємо фото якщо є
-      if (formData.photo && formData.photo.filename) {
-        const photoExt = path.extname(formData.photo.filename) || '.jpg';
-        newItem.photo_filename = `photo_${newItem.id}${photoExt}`;
-        const photoPath = path.join(options.cache, 'photos', newItem.photo_filename);
+          // Зберігаємо фото якщо є
+          if (formData.photo && formData.photo.filename) {
+            const photoExt = path.extname(formData.photo.filename) || '.jpg';
+            newItem.photo_filename = `photo_${newItem.id}${photoExt}`;
+            const photoPath = path.join(options.cache, 'photos', newItem.photo_filename);
+            
+            fs.writeFileSync(photoPath, formData.photo.data);
+            console.log(`Фото збережено: ${newItem.photo_filename}`);
+          }
+
+          // Додаємо в інвентар
+          inventory.push(newItem);
+          
+          console.log(`Зареєстровано новий пристрій: ${newItem.inventory_name} (ID: ${newItem.id})`);
+          
+          res.writeHead(201, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            message: 'Device registered successfully',
+            id: newItem.id
+          }));
+          return;
+        }
+
+        // Маршрут 2: Отримання списку всіх речей
+        if (pathname === '/inventory' && method === 'GET') {
+          const inventoryWithPhotos = inventory.map(item => ({
+            ...item,
+            photo_url: item.photo_filename ? `/inventory/${item.id}/photo` : null
+          }));
+          
+          sendJSONResponse(res, 200, inventoryWithPhotos);
+          return;
+        }
+
+        // Маршрут 3: Отримання інформації про конкретну річ
+        if (pathname.startsWith('/inventory/') && !pathname.includes('/photo') && method === 'GET') {
+          const id = parseInt(pathname.split('/')[2]);
+          const item = inventory.find(i => i.id === id);
+          
+          if (!item) {
+            res.writeHead(404);
+            res.end('Item not found');
+            return;
+          }
+          
+          const itemWithPhoto = {
+            ...item,
+            photo_url: item.photo_filename ? `/inventory/${item.id}/photo` : null
+          };
+          
+          sendJSONResponse(res, 200, itemWithPhoto);
+          return;
+        }
+
+        // Маршрут 4: Оновлення інформації про річ
+        if (pathname.startsWith('/inventory/') && !pathname.includes('/photo') && method === 'PUT') {
+          const id = parseInt(pathname.split('/')[2]);
+          const itemIndex = inventory.findIndex(i => i.id === id);
+          
+          if (itemIndex === -1) {
+            res.writeHead(404);
+            res.end('Item not found');
+            return;
+          }
+          
+          try {
+            const updates = JSON.parse(body);
+            if (updates.inventory_name) {
+              inventory[itemIndex].inventory_name = updates.inventory_name;
+            }
+            if (updates.description !== undefined) {
+              inventory[itemIndex].description = updates.description;
+            }
+            
+            console.log(`Оновлено пристрій ID: ${id}`);
+            sendJSONResponse(res, 200, { message: 'Item updated successfully', item: inventory[itemIndex] });
+          } catch (error) {
+            res.writeHead(400);
+            res.end('Invalid JSON');
+          }
+          return;
+        }
+
+        // Маршрут 5: Отримання фото
+        if (pathname.startsWith('/inventory/') && pathname.endsWith('/photo') && method === 'GET') {
+          const id = parseInt(pathname.split('/')[2]);
+          const item = inventory.find(i => i.id === id);
+          
+          if (!item || !item.photo_filename) {
+            res.writeHead(404);
+            res.end('Photo not found');
+            return;
+          }
+          
+          const photoPath = path.join(options.cache, 'photos', item.photo_filename);
+          sendPhotoResponse(res, photoPath);
+          return;
+        }
+
+        // Маршрут 6: Оновлення фото
+        if (pathname.startsWith('/inventory/') && pathname.endsWith('/photo') && method === 'PUT') {
+          const id = parseInt(pathname.split('/')[2]);
+          const itemIndex = inventory.findIndex(i => i.id === id);
+          
+          if (itemIndex === -1) {
+            res.writeHead(404);
+            res.end('Item not found');
+            return;
+          }
+          
+          const contentType = req.headers['content-type'];
+          if (!contentType || !contentType.includes('multipart/form-data')) {
+            res.writeHead(400);
+            res.end('Content-Type must be multipart/form-data');
+            return;
+          }
+          
+          const formData = parseMultipartFormData(body, contentType);
+          
+          if (!formData.photo || !formData.photo.filename) {
+            res.writeHead(400);
+            res.end('Photo is required');
+            return;
+          }
+          
+          // Видаляємо старе фото якщо є
+          const oldPhotoFilename = inventory[itemIndex].photo_filename;
+          if (oldPhotoFilename) {
+            const oldPhotoPath = path.join(options.cache, 'photos', oldPhotoFilename);
+            try {
+              if (fs.existsSync(oldPhotoPath)) {
+                fs.unlinkSync(oldPhotoPath);
+              }
+            } catch (error) {
+              console.log('Не вдалося видалити старе фото:', error.message);
+            }
+          }
+          
+          // Зберігаємо нове фото
+          const photoExt = path.extname(formData.photo.filename) || '.jpg';
+          const newPhotoFilename = `photo_${id}${photoExt}`;
+          const newPhotoPath = path.join(options.cache, 'photos', newPhotoFilename);
+          
+          fs.writeFileSync(newPhotoPath, formData.photo.data);
+          inventory[itemIndex].photo_filename = newPhotoFilename;
+          
+          console.log(`Оновлено фото для пристрою ID: ${id}`);
+          sendJSONResponse(res, 200, { message: 'Photo updated successfully' });
+          return;
+        }
+
+        // Маршрут 7: Видалення пристрою
+        if (pathname.startsWith('/inventory/') && !pathname.includes('/photo') && method === 'DELETE') {
+          const id = parseInt(pathname.split('/')[2]);
+          const itemIndex = inventory.findIndex(i => i.id === id);
+          
+          if (itemIndex === -1) {
+            res.writeHead(404);
+            res.end('Item not found');
+            return;
+          }
+          
+          // Видаляємо фото якщо є
+          const item = inventory[itemIndex];
+          if (item.photo_filename) {
+            const photoPath = path.join(options.cache, 'photos', item.photo_filename);
+            try {
+              if (fs.existsSync(photoPath)) {
+                fs.unlinkSync(photoPath);
+              }
+            } catch (error) {
+              console.log('Не вдалося видалити фото:', error.message);
+            }
+          }
+          
+          inventory.splice(itemIndex, 1);
+          console.log(`Видалено пристрій ID: ${id}`);
+          
+          sendJSONResponse(res, 200, { message: 'Item deleted successfully' });
+          return;
+        }
+
+        // Маршрут 10: Пошук пристрою
+        if (pathname === '/search' && method === 'POST') {
+          const searchData = querystring.parse(body);
+          const id = parseInt(searchData.id);
+          const hasPhoto = searchData.has_photo === 'true';
+          
+          const item = inventory.find(i => i.id === id);
+          
+          if (!item) {
+            res.writeHead(404);
+            res.end('Item not found');
+            return;
+          }
+          
+          let responseItem = { ...item };
+          if (hasPhoto && item.photo_filename) {
+            responseItem.photo_url = `/inventory/${item.id}/photo`;
+          }
+          
+          sendJSONResponse(res, 200, responseItem);
+          return;
+        }
+
+        // Якщо маршрут не знайдено
+        res.writeHead(404);
+        res.end('Not Found');
         
-        fs.writeFileSync(photoPath, formData.photo.data);
-        console.log(`✅ Фото збережено: ${newItem.photo_filename}`);
+      } catch (error) {
+        console.error('Помилка:', error);
+        res.writeHead(500);
+        res.end('Internal Server Error');
       }
-
-      // Додаємо в інвентар
-      inventory.push(newItem);
-      
-      console.log(`✅ Зареєстровано новий пристрій: ${newItem.inventory_name} (ID: ${newItem.id})`);
-      
-      res.writeHead(201, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        message: 'Device registered successfully',
-        id: newItem.id
-      }));
-      return;
-    }
-
-    // Інші маршрути будуть додаватися тут...
-    
-    // Якщо маршрут не знайдено
-    res.writeHead(404);
-    res.end('Not Found');
-    
-  } catch (error) {
-    console.error('❌ Помилка:', error);
-    res.writeHead(500);
-    res.end('Internal Server Error');
-  }
-});
+    });
 
   } catch (error) {
-    console.error(' Помилка:', error);
+    console.error('Помилка:', error);
     res.writeHead(500);
     res.end('Internal Server Error');
   }
@@ -288,27 +455,27 @@ try {
   createCacheDirectory(options.cache);
   
   server.listen(options.port, options.host, () => {
-    console.log('══════════════════════════════════════');
-    console.log(' Inventory Server запущено!');
-    console.log(` Адреса: http://${options.host}:${options.port}`);
-    console.log(` Кеш: ${options.cache}`);
-    console.log(' Сервер запущено:', new Date().toLocaleString());
-    console.log('══════════════════════════════════════');
+    console.log('==========================================');
+    console.log('Inventory Server запущено!');
+    console.log(`Адреса: http://${options.host}:${options.port}`);
+    console.log(`Кеш: ${options.cache}`);
+    console.log('Сервер запущено:', new Date().toLocaleString());
+    console.log('==========================================');
   });
   
 } catch (error) {
-  console.error(' Помилка при запуску сервера:', error.message);
+  console.error('Помилка при запуску сервера:', error.message);
   process.exit(1);
 }
 
 server.on('error', (error) => {
-  console.error(' Помилка сервера:', error.message);
+  console.error('Помилка сервера:', error.message);
 });
 
 process.on('SIGINT', () => {
-  console.log('\n Зупинка сервера...');
+  console.log('\nЗупинка сервера...');
   server.close(() => {
-    console.log(' Сервер зупинено');
+    console.log('Сервер зупинено');
     process.exit(0);
   });
 });
