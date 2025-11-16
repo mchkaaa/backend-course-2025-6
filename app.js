@@ -210,21 +210,71 @@ const server = http.createServer(async (req, res) => {
       body += chunk.toString();
     });
 
-    req.on('end', () => {
-      // Тут буде обробка інших маршрутів
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(`
-        <html>
-          <head><title>Backend Course Server</title></head>
-          <body>
-            <h1> Сервер працює!</h1>
-            <p>Базова структура готова. Додаємо ендпоінти...</p>
-            <p><a href="/RegisterForm.html">Форма реєстрації</a></p>
-            <p><a href="/SearchForm.html">Форма пошуку</a></p>
-          </body>
-        </html>
-      `);
-    });
+    req.on('end', async () => {
+  try {
+    // Маршрут 1: Реєстрація нового пристрою
+    if (pathname === '/register' && method === 'POST') {
+      const contentType = req.headers['content-type'];
+      
+      if (!contentType || !contentType.includes('multipart/form-data')) {
+        res.writeHead(400);
+        res.end('Content-Type must be multipart/form-data');
+        return;
+      }
+
+      const formData = parseMultipartFormData(body, contentType);
+      
+      // Перевірка обов'язкового поля
+      if (!formData.inventory_name) {
+        res.writeHead(400);
+        res.end('Inventory name is required');
+        return;
+      }
+
+      // Створюємо новий запис
+      const newItem = {
+        id: nextId++,
+        inventory_name: formData.inventory_name,
+        description: formData.description || '',
+        photo_filename: null,
+        created_at: new Date().toISOString()
+      };
+
+      // Зберігаємо фото якщо є
+      if (formData.photo && formData.photo.filename) {
+        const photoExt = path.extname(formData.photo.filename) || '.jpg';
+        newItem.photo_filename = `photo_${newItem.id}${photoExt}`;
+        const photoPath = path.join(options.cache, 'photos', newItem.photo_filename);
+        
+        fs.writeFileSync(photoPath, formData.photo.data);
+        console.log(`✅ Фото збережено: ${newItem.photo_filename}`);
+      }
+
+      // Додаємо в інвентар
+      inventory.push(newItem);
+      
+      console.log(`✅ Зареєстровано новий пристрій: ${newItem.inventory_name} (ID: ${newItem.id})`);
+      
+      res.writeHead(201, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        message: 'Device registered successfully',
+        id: newItem.id
+      }));
+      return;
+    }
+
+    // Інші маршрути будуть додаватися тут...
+    
+    // Якщо маршрут не знайдено
+    res.writeHead(404);
+    res.end('Not Found');
+    
+  } catch (error) {
+    console.error('❌ Помилка:', error);
+    res.writeHead(500);
+    res.end('Internal Server Error');
+  }
+});
 
   } catch (error) {
     console.error(' Помилка:', error);
