@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Пошук пристрою</title>
+</head>
+<body>
+    <h1>Пошук пристрою за ID</h1>
+    <form action="/search" method="POST" enctype="application/x-www-form-urlencoded">
+        <div>
+            <label>ID пристрою:</label><br>
+            <input type="number" name="id" required>
+        </div>
+        <br>
+        <div>
+            <label>
+                <input type="checkbox" name="has_photo" value="true">
+                Додати посилання на фото в опис?
+            </label>
+        </div>
+        <br>
+        <button type="submit">Знайти</button>
+    </form>
+</body>
+</html>
