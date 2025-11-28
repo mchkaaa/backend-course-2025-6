@@ -57,9 +57,9 @@ if (!fs.existsSync(photosDir)) fs.mkdirSync(photosDir, { recursive: true });
 //   Create Express app
 // ========================
 const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(cors());  // Дозволяє запити з інших доменів
+app.use(express.json());  // body-parser Розбирає (парсить) вхідні запити у форматі JSON
+app.use(express.urlencoded({ extended: true }));  // body-parser Розбирає дані, надіслані через HTML-форми
 
 // ========================
 //   Multer Configuration
@@ -86,7 +86,7 @@ const swaggerOptions = {
   apis: [__filename],
 };
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));  // swaggerUi.serve — готує інтерфейс. swaggerUi.setup — генерує сторінку на основі моєї специфікації.
 
 // ========================
 //   Helper
@@ -168,7 +168,7 @@ app.route('/SearchForm.html')
  *         description: Bad Request (Missing inventory_name)
  */
 app.route('/register')
-  .post(upload.single('photo'), (req, res) => {
+  .post(upload.single('photo'), (req, res) => { // upload.single('photo') — це робота multer
     if (!req.body.inventory_name) return res.status(400).send('Inventory name is required');
 
     const newItem = {
@@ -380,7 +380,7 @@ app.route('/search')
     if (hasPhoto && item.photo_filename) responseItem.description += ` (Photo link: /inventory/${item.id}/photo)`;
     res.json(responseItem);
   })
-  .all(methodNotAllowed);
+  .all(methodNotAllowed); //фінальне middleware для маршрутів
 
 // ========================
 //   START SERVER
